@@ -29,7 +29,7 @@ repos:
   - id: setup-cfg-fmt
 
 - repo: https://github.com/PyCQA/isort
-  rev: "5.11.4"
+  rev: "5.12.0"
   hooks:
   - id: isort
 
@@ -40,7 +40,7 @@ repos:
     args: ["--py38-plus"]
 
 - repo: https://github.com/psf/black
-  rev: "22.12.0"
+  rev: "23.1.0"
   hooks:
   - id: black-jupyter
 
@@ -52,7 +52,7 @@ repos:
       stages: [manual]
 
 - repo: https://github.com/hadialqattan/pycln
-  rev: "v2.1.2"
+  rev: "v2.1.3"
   hooks:
   - id: pycln
     args: ["--all"]
@@ -93,7 +93,7 @@ repos:
   - id: shellcheck
 
 - repo: https://github.com/pre-commit/pygrep-hooks
-  rev: "v1.9.0"
+  rev: "v1.10.0"
   hooks:
   - id: python-no-log-warn
   - id: rst-backticks

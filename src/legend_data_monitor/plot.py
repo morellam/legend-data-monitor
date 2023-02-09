@@ -16,7 +16,6 @@ from matplotlib import dates, ticker
 from . import analysis, parameters
 
 palette = sn.color_palette("hls", 15)
-# sn.set_theme(style='darkgrid')
 
 plt.rcParams.update({"figure.max_open_warning": 0})
 plt.rcParams["figure.figsize"] = (14, 10)
@@ -267,7 +266,7 @@ def plot_par_vs_time(
             string_no = det_dict[detector]["string"]["number"]
             string_pos = det_dict[detector]["string"]["position"]
             lab = f"s{string_no}-p{string_pos}-{detector}-{name}"
-            col = j_plot[1][detector]
+            col = palette[int(string_pos)]
         if det_type == "spms":
             name = det_dict[detector]["det_id"]
             lab = f"{name} - {detector}"
@@ -988,7 +987,6 @@ def plot_wtrfll(
 
     for index, detector in enumerate(det_list):
         if string_number == "1":
-
             # keep entries for the selected detector
             new_data = data[data["hit_table"] == int(detector.split("ch0")[-1])]
 
@@ -1005,7 +1003,7 @@ def plot_wtrfll(
             if det_type == "spms":
                 col = j_plot[0][str(detector)]
             if det_type == "geds":
-                col = j_plot[1][detector]
+                col = palette[int(string_pos)]
 
             # skip detectors that are not geds/spms
             if det_dict[detector]["system"] == "--":
@@ -1200,7 +1198,6 @@ def plot_ch_par_vs_time(
 
     for i, ax_row in enumerate(ax_array):
         for axes in ax_row:
-
             detector = det_list[i]
             # keep entries for the selected detector
             if (
@@ -1236,26 +1233,8 @@ def plot_ch_par_vs_time(
             if det_type == "spms":
                 col = j_plot[0][str(detector)]
 
-            if len(time_cut) == 4:
-                start_time = time_cut[0] + " " + time_cut[1]
-                end_time = time_cut[2] + " " + time_cut[3]
-
-                start_timestamp = (
-                    datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S")
-                ).timestamp()
-                end_timestamp = (
-                    datetime.strptime(end_time, "%d/%m/%Y %H:%M:%S")
-                ).timestamp()
-
-                new_data = new_data[new_data["timestamp"] > start_timestamp]
-                new_data = new_data[new_data["timestamp"] < end_timestamp]
-
-            if exp == "l200":
-                # select (or remove) pulser events from timestamps array
-                if parameter in pulser_events:
-                    new_data = new_data[new_data["timestamp"].isin(pulser_timestamps)]
-                elif parameter in physics_events:
-                    new_data = new_data[~new_data["timestamp"].isin(pulser_timestamps)]
+            if det_type == "geds":
+                col = palette[int(string_pos)]
 
 
             # det parameter and time arrays for a given detector
@@ -1284,14 +1263,7 @@ def plot_ch_par_vs_time(
             start_time = times[0]
             end_time = times[-1]
 
-            # if det_type == "spms":
-            #     col = j_plot[0][str(detector)]
-            # if det_type == "geds":
-            #     col = j_plot[1][detector]
-            # if det_type == "ch000":
-            #     col = "r"
-            # if det_type == "ch001":
-            #     col = "r"
+
 
             # legend
             if parameter not in no_variation_pars:

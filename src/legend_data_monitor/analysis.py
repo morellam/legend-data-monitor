@@ -46,7 +46,6 @@ def read_json_files():
     j_config.append(data_config["status"])  # 10
     j_config.append(data_config["time-format"])  # 11
     j_config.append(data_config["verbose"])  # 12
-    j_config.append(data_config["no_avail_chs"])  # 13
 
     j_par.append(data_par["par_to_plot"])  # 0
 
@@ -138,15 +137,23 @@ def write_config(
         # converting channel number to int to give array as input to FileDB
         det_list = [int(elem.split("ch")[-1]) for elem in flat_list]
 
-        dsp_list = det_list.copy()
-        hit_list = det_list.copy()
-
         # removing channels having no hit data
-        removed_chs = j_config[13][det_type]
+        if "60" in exp:
+            run = "r022"
+        if "200" in exp:
+            run = "r010"
+        json_file = f"{exp.upper()}-{period}-{run}-T%-all-config"
+        map_lmeta = lmeta["dataprod"]["config"]
+        status_dict = map_lmeta[json_file]["hardware_configuration"]["channel_map"]
 
+        removed_chs = [
+            int(k.split("ch")[-1])
+            for k, v in status_dict.items()
+            if v["software_status"] == "Off"
+        ]
         for ch in removed_chs:
-            if ch in hit_list:
-                hit_list.remove(ch)
+            if ch in det_list:
+                det_list.remove(ch)
 
         dict_dbconfig = {
             "data_dir": files_path + version + "/generated/tier",
@@ -156,7 +163,7 @@ def write_config(
                 "hit": "/phy/{period}/{run}/{exp}-{period}-{run}-phy-{timestamp}-tier_hit.lh5",
             },
             "table_format": {"dsp": "ch{ch:03d}/dsp", "hit": "ch{ch:03d}/hit"},
-            "tables": {"dsp": dsp_list, "hit": hit_list},
+            "tables": {"dsp": det_list, "hit": det_list},
             "columns": {"dsp": parameters, "hit": parameters},
         }
         dict_dlconfig = {
@@ -354,63 +361,48 @@ def load_df_cols(par_to_plot: list[str], det_type: str):
 
 def load_geds():
     """Load channel map for geds."""
-    # json_file = f"{exp.upper()}-{period}-r%-T%-all-config"
-    json_file = "L200-p01-r%-T%-all-config"
+
+    ex = "l" + exp.split("l")[1].zfill(3)
+    json_file = f"{ex}-{period}-r%-T%-all-config"
+
     map_lmeta = lmeta["hardware"]["configuration"]["channelmaps"]
     channel_map = map_lmeta[json_file]
 
-    if exp == "l60" or exp == "l200":
-        geds_dict = {}
-        for k1, v1 in channel_map.items():
-            if "S0" not in k1:  # keep only geds
-                info_dict = {}
-                info_dict["system"] = "ged"
-                info_dict["det_type"] = "icpc"
-                info_dict["hardware_status"] = "--"
-                info_dict["software_status"] = "--"
-                info_dict["electronics"] = "--"
-                for k2, v2 in v1.items():
-                    if k2 == "detname":
-                        info_dict["det_id"] = v2
-                    if k2 == "location":
-                        info_dict["string"] = {
-                            "number": str(v2["string"]),
-                            "position": str(v2["position"]),
-                        }
-                    if k2 == "daq":
-                        info_dict[k2] = {
-                            "board_ch": str(v1[k2]["channel"]),  # check if it's ok
-                            "board_slot": str(v2["card"]["id"]),  # check if it's ok
-                            "board_id": str(v2["card"]["address"]),
-                            "crate": str(v1[k2]["crate"]),
-                        }
-                    if k2 == "voltage":
-                        info_dict["high_voltage"] = {
-                            "board_chan": str(v1[k2]["channel"]),
-                            "cable": "--",
-                            "flange_id": "?",  # check it
-                            "flange_pos": "--",
-                            "crate": "0",  # check if it's ok
-                        }
-                    if k2 == "electronics":
-                        info_dict[k2] = {
-                            "fanout_card": "?",  # check it
-                            "lmfe_id": str(v2["cc4"]["id"]),  # check if it's ok
-                            "raspberrypi": "?",  # check it
-                            "cc4_ch": str(v2["cc4"]["channel"]),
-                            "head_card_ana": "?",  # check it
-                            "head_card_dig": "?",  # check it
-                        }
-                # get the FC channel
-                channel = v1["daq"]["fc_channel"]
-                if channel < 10:
-                    channel = f"ch00{channel}"
-                elif channel > 9 and channel < 100:
-                    channel = f"ch0{channel}"
-                else:
-                    channel = f"ch{channel}"
-                # final dictionary
-                geds_dict[channel] = info_dict
+    geds_dict = {}
+    for k1, v1 in channel_map.items():
+        if v1["system"] == "geds":  # keep only geds
+            info_dict = {}
+            info_dict["system"] = v1["system"]
+            # info_dict["det_type"] = k1["det_type"]
+            info_dict["electronics"] = v1["electronics"]
+            info_dict["det_id"] = k1
+
+            for k2, v2 in v1.items():
+                if k2 == "location":
+                    info_dict["string"] = {
+                        "number": str(v2["string"]),
+                        "position": str(v2["position"]),
+                    }
+                if k2 == "daq":
+                    info_dict[k2] = {
+                        "board_ch": str(v1[k2]["channel"]),
+                        "board_slot": str(v2["card"]["id"]),
+                        "board_id": str(v2["card"]["address"]),
+                        "crate": str(v1[k2]["crate"]),
+                    }
+                if k2 == "voltage":
+                    info_dict["high_voltage"] = v1[k2]
+
+            # get the FC channel
+            channel = v1["daq"]["fcid"]
+            if channel < 10:
+                channel = f"ch00{channel}"
+            elif channel > 9 and channel < 100:
+                channel = f"ch0{channel}"
+            else:
+                channel = f"ch{channel}"
+            # final dictionary
+            geds_dict[channel] = info_dict
 
         # sorting channels in dict
         geds_keys = list(geds_dict.keys())
@@ -422,59 +414,39 @@ def load_geds():
 
 def load_spms():
     """Load channel map for spms."""
-    map_path = j_config[0]["path"]["channel-map"]
 
-    if exp == "l60":
-        map_file = map_path + f"{exp.upper()}-{period}-r%-T%-SiPM-config.json"
-        with open(map_file) as f:
-            spms_dict = json.load(f)
+    ex = "l" + exp.split("l")[1].zfill(3)
+    json_file = f"{ex}-{period}-r%-T%-all-config"
+    map_lmeta = lmeta["hardware"]["configuration"]["channelmaps"]
+    channel_map = map_lmeta[json_file]
 
-    if exp == "l200":
-        # we keep using L60 map because L200 map has no info about spms positions
-        # map_file = map_path + f"L60-{period}-r%-T%-SiPM-config.json"
-        map_file = map_path + "L60-p01-r%-T%-SiPM-config.json"
-        with open(map_file) as f:
-            spms_dict = json.load(f)
+    spms_dict = {}
+    for _, v1 in channel_map.items():
+        if v1["system"] == "spms":  # keep only spms
+            info_dict = {}
+            info_dict["system"] = v1["system"]
+            info_dict["det_id"] = v1["name"]
+            info_dict["barrel"] = str(v1["location"]["fiber"])[:2]
+            info_dict["position"] = str(v1["location"]["position"])
+            info_dict["daq"] = v1["daq"]
+            info_dict["electronics"] = v1["electronics"]
 
+            # get the FC channel
+            channel = v1["daq"]["fcid"]
+            if channel < 10:
+                channel = f"ch00{channel}"
+            elif channel > 9 and channel < 100:
+                channel = f"ch0{channel}"
+            else:
+                channel = f"ch{channel}"
+            # final dictionary
+            spms_dict[channel] = info_dict
 
-        # # a future possible dictionary for L200
-        # json_file = f"{exp.upper()}-{period}-r%-T%-all-config"
-        # map_lmeta = lmeta["hardware"]["configuration"]["channelmaps"]
-        # channel_map = map_lmeta[json_file]
+    # sorting channels in dict
+    spms_keys = list(spms_dict.keys())
+    spms_keys.sort()
+    spms_dict = {i: spms_dict[i] for i in spms_keys}
 
-        # spms_dict = {}
-        # for k1,v1 in channel_map.items():
-        #     if 'S0' in k1: # keep only spms
-        #         info_dict = {}
-        #         info_dict["system"] = "spm"
-        #         info_dict["det_id"] = v1["detname"]
-        #         info_dict["barrel"] = str(v1["location"]["fiber"])[2:]
-
-        #         for k2,v2 in v1.items():
-        #             if k2 == "detname":
-        #                 info_dict["det_id"] = v2
-        #             if k2 == "daq":
-        #                 info_dict[k2] = {
-        #                     "board_ch": str(v1[k2]["channel"]), # check if it's ok
-        #                     "board_slot": str(v2["card"]["id"]), # check if it's ok
-        #                     "board_id": str(v2["card"]["address"]),
-        #                     "crate": str(v1[k2]["crate"])
-        #                 }
-        #         # get the FC channel
-        #         channel = v1["daq"]["fc_channel"]
-        #         if channel < 10:
-        #             channel = f"ch00{channel}"
-        #         elif channel > 9 and channel < 100:
-        #             channel = f"ch0{channel}"
-        #         else:
-        #             channel = f"ch{channel}"
-        #         # final dictionary
-        #         spms_dict[channel] = info_dict
-
-        # # sorting channels in dict
-        # spms_keys = list(spms_dict.keys())
-        # spms_keys.sort()
-        # spms_dict = {i: spms_dict[i] for i in spms_keys}
 
     return spms_dict
 
@@ -492,15 +464,11 @@ def read_geds(geds_dict: dict):
     string_name = []
 
     # no of strings
-    str_no = [
-        v["string"]["number"]
-        for k, v in geds_dict.items()
-        if v["string"]["number"] != "--"
-    ]
 
-    unique_list = list(int(a) for a in set(str_no))
-    min_str = min(unique_list)
-    max_str = max(unique_list)
+    str_no = [v["string"]["number"] for k, v in geds_dict.items()]
+    min_str = int(min(str_no))
+    max_str = int(max(str_no))
+
     idx = min_str
 
     # fill lists with strings of channels ('while' loop over no of string)
@@ -527,70 +495,6 @@ def read_geds(geds_dict: dict):
     return string_tot, string_name
 
 
-def read_spms_old(spms_dict: dict):
-    """
-    Build two lists for IN and OUT spms.
-
-    Parameters
-    ----------
-    spms_dict
-               Contains info (crate, card, ch_orca) for spms
-    """
-    spms_map = json.load(open(pkg / "settings" / "spms_map.json"))
-    top_ob = []
-    bot_ob = []
-    top_ib = []
-    bot_ib = []
-
-    # loop over spms channels (i.e. channels w/ crate=2)
-    for ch in list(spms_dict.keys()):
-        card = spms_dict[ch]["daq"]["card"]
-        ch_orca = spms_dict[ch]["daq"]["ch_orca"]
-
-        idx = "0"
-        for serial in list(spms_map.keys()):
-            if (
-                spms_map[serial]["card"] == card
-                and spms_map[serial]["ch_orca"] == ch_orca
-            ):
-                idx = str(serial)
-        if idx == "0":
-            continue
-
-        spms_type = spms_map[idx]["type"]
-        spms_pos = spms_map[idx]["pos"]
-        if spms_type == "OB" and spms_pos == "top":
-            top_ob.append(ch)
-        if spms_type == "OB" and spms_pos == "bot":
-            bot_ob.append(ch)
-        if spms_type == "IB" and spms_pos == "top":
-            top_ib.append(ch)
-        if spms_type == "IB" and spms_pos == "bot":
-            bot_ib.append(ch)
-
-    half_len_top_ob = int(len(top_ob) / 2)
-    half_len_bot_ob = int(len(bot_ob) / 2)
-    top_ob_1 = top_ob[half_len_top_ob:]
-    top_ob_2 = top_ob[:half_len_top_ob]
-    bot_ob_1 = bot_ob[half_len_bot_ob:]
-    bot_ob_2 = bot_ob[:half_len_bot_ob]
-
-    string_tot_div = [top_ob_1, top_ob_2, bot_ob_1, bot_ob_2, top_ib, bot_ib]
-    string_name_div = [
-        "top_OB-1",
-        "top_OB-2",
-        "bot_OB-1",
-        "bot_OB-2",
-        "top_IB",
-        "bot_IB",
-    ]
-
-    string_tot = [top_ob, bot_ob, top_ib, bot_ib]
-    string_name = ["top_OB", "bot_OB", "top_IB", "bot_IB"]
-
-    return string_tot, string_name, string_tot_div, string_name_div
-
-
 def read_spms(spms_dict: dict):
     """
     Build two lists for IN and OUT spms.
@@ -605,20 +509,18 @@ def read_spms(spms_dict: dict):
     top_ib = []
     bot_ib = []
 
-    # loop over spms channels (i.e. channels w/ crate=2)
+    # loop over spms channels
     for ch in list(spms_dict.keys()):
-        # card = spms_dict[ch]["daq"]["card"]
-        # ch_orca = spms_dict[ch]["daq"]["ch_orca"]
         spms_type = spms_dict[ch]["barrel"]
-        det_name_int = int(spms_dict[ch]["det_id"].split("S")[1])
+        position = spms_dict[ch]["position"]
 
-        if spms_type == "OB" and det_name_int % 2 != 0:
+        if spms_type == "OB" and position == "top":
             top_ob.append(ch)
-        if spms_type == "OB" and det_name_int % 2 == 0:
+        if spms_type == "OB" and position == "bottom":
             bot_ob.append(ch)
-        if spms_type == "IB" and det_name_int % 2 != 0:
+        if spms_type == "IB" and position == "top":
             top_ib.append(ch)
-        if spms_type == "IB" and det_name_int % 2 == 0:
+        if spms_type == "IB" and position == "bottom":
             bot_ib.append(ch)
 
     string_tot = [top_ob, bot_ob, top_ib, bot_ib]
@@ -968,8 +870,13 @@ def get_puls_ievt_spms(dsp_files: list[str]):
     dsp_files
             List of dsp files
     """
-    wf_max = lh5.load_nda(dsp_files, ["wf_max"], "ch000/dsp/")["wf_max"]
-    baseline = lh5.load_nda(dsp_files, ["baseline"], "ch000/dsp")["baseline"]
+    if "60" in exp:
+        ch_pul = "ch000"
+    if "200" in exp:
+        ch_pul = "ch001"
+
+    wf_max = lh5.load_nda(dsp_files, ["wf_max"], f"{ch_pul}/dsp/")["wf_max"]
+    baseline = lh5.load_nda(dsp_files, ["baseline"], f"{ch_pul}/dsp")["baseline"]
     wf_max = np.subtract(wf_max, baseline)
     puls_ievt = []
     pulser_entry = []

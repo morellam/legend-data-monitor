@@ -196,10 +196,7 @@ def select_and_plot_run(
                     for par in geds_par:
                         det_status_dict = {}
                         if par != "timestamp":
-                            for (det_list, string) in zip(
-                                string_geds, string_geds_name
-                            ):
-
+                            for det_list, string in zip(string_geds, string_geds_name):
                                 if len(det_list) == 0:
                                     continue
 
@@ -319,7 +316,7 @@ def select_and_plot_run(
                         ) = analysis.get_puls_ievt_spms(data)
                         for par in spms_par:
                             if par in ["energy_in_pe", "trigger_pos"]:
-                                for (det_list, string) in zip(
+                                for det_list, string in zip(
                                     spms_merged, spms_name_merged
                                 ):
                                     # if string == "top_IB": # <- for quick checks
@@ -340,11 +337,14 @@ def select_and_plot_run(
                                         pdf,
                                     )
                             else:
-                                for (det_list, string) in zip(
+                                for det_list, string in zip(
                                     spms_merged, spms_name_merged
                                 ):
                                     # if string == "top_IB": # <- for quick checks
-                                    (_, map_dict,) = plot.plot_ch_par_vs_time(
+                                    (
+                                        _,
+                                        map_dict,
+                                    ) = plot.plot_ch_par_vs_time(
                                         data,
                                         det_list,
                                         par,

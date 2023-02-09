@@ -1,15 +1,14 @@
 {
   "run_info": {
-    "exp": "l60",
+    "exp": "l200",
     "path": {
-      "lh5-files": "/data1/shared/l60/l60-prodven-v1/prod-ref/",
+      "lh5-files": "/data1/users/marshall/prod-ref/",
       "version": "v06.00",
       "orca-files": "/data1/shared/l60/l60-daq/daq-v01/",
-      "channel-map": "/data1/users/calgaro/legend-data-monitor/src/legend_data_monitor/settings/",
       "output": "/data1/users/calgaro/legend-data-monitor/out/"
     }
   },
-  "period": "p01",
+  "period": "p02",
   "run": "",
   "file_keys": "",
   "datatype": "phy",
@@ -74,14 +73,14 @@
     "README": "Specify here which parameter you want to plot in 3D. The other parameters will be automatically plotted in 2D. Set to true 'par_average' if you want to average over 'step' entries, otherwise set it to false.",
     "three_dim_pars": [],
     "par_average": true,
-    "avg_interval": 10
+    "avg_interval": 3
   },
   "time_window": {
     "enabled": true,
-    "start_date": "22/09/2022",
-    "start_hour": "09:34:00",
-    "end_date": "22/09/2022",
-    "end_hour": "10:10:00"
+    "start_date": "29/01/2023",
+    "start_hour": "08:00:00",
+    "end_date": "29/01/2023",
+    "end_hour": "08:30:00"
   },
   "last_hours": {
     "enabled": false,
@@ -101,9 +100,5 @@
     "README": "Choose the time format of your plots: day/month-time, day/month, time",
     "frmt": "day/month-time"
   },
-  "verbose": true,
-  "no_avail_chs": {
-    "geds": [24, 10, 41],
-    "spms": [49, 71, 72, 81, 91, 50, 70, 73, 80, 83, 85, 47]
-  }
+  "verbose": true
 }
